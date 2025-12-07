@@ -1,0 +1,16 @@
+When user types www.foobar.com
+,their computer first needs to figure out where that name actually lives on the internet. The domain foobar.com has a DNS configuration, and inside it there is a www record. This record is a CNAME or A record depending on how it’s set up, but in this case we say it points directly to the server’s IP address, which is 8.8.8.8. DNS sends that back to the user, and now the browser knows which machine to talk to.
+
+The request travels over the internet using standard protocols like TCP/IP and reaches the single server that hosts the entire website. A server, in this context, is basically just a computer — physical or virtual — that is always online and configured to handle incoming network requests. Even though there is only one machine, it contains different layers of the web stack.
+
+When the request hits the server, the first thing that handles it is Nginx, which is acting as the web server. Its job is to accept HTTP requests, route them to the right place, and return responses. Static files could be served directly from Nginx, but anything dynamic has to go to the application.
+
+Behind Nginx there is the application server, which actually runs the code for the website. This could be something like Gunicorn, uWSGI, PHP-FPM, Node’s built-in server, or any other process that executes the application logic. It loads the codebase that lives on the server — all the files that represent the website’s functionality.
+
+Whenever the application needs persistent information, it connects to the MySQL database on the same server. The database stores all structured data: accounts, posts, transactions, anything that shouldn’t disappear if the server restarts.
+
+The application server finishes processing the request, sends the result back to Nginx, and Nginx returns an HTTP response to the user’s browser. The user sees the website.
+
+Even though this setup works and is actually how many small websites run, it has obvious problems. Everything is on one machine, which makes it a classic single point of failure. If the server dies, crashes, or loses its network connection, the website is instantly down. The same problem shows up during maintenance. If you want to deploy new code, restart Nginx, or update the database, you basically have no choice but to interrupt users because the only server you have must be restarted or taken offline. Finally, this system cannot handle sudden traffic growth. Since there is only one server, once its CPU, RAM, or disk bandwidth is maxed out, there is no way to spread the traffic across more machines. It doesn’t scale horizontally at all.
+
+This describes the simplest possible one-server web infrastructure and why it works, but also why it eventually becomes a bottleneck.

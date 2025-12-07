@@ -1,0 +1,10 @@
+A user goes to http://www.foobar.com. DNS points them to the public IP that belongs to the load-balancer layer. Instead of one load balancer, there are now two HAProxy servers working together in a small cluster. They share one virtual IP, so if one of them stops working, the second one immediately takes over. This extra load balancer is added so the whole site doesn’t go down just because the balancer failed.
+ 
+Behind the load-balancers, the system is split into three separate servers. One server runs only the web server (Nginx). One server runs only the application server and the code. Another server runs only the database (MySQL). Each part is separated so they don’t fight for resources, and so each component can be scaled or fixed on its own without breaking the others.
+
+The extra server that is added in this design is whichever layer needs more capacity. Usually this means adding another application server, since the app layer often handles the most work. Once added, the load balancers can send traffic to both app servers.
+
+Each element is added for a reason:
+The second HAProxy is added for high availability. The dedicated web server is added so request handling stays fast and clean. The dedicated app server is added so all the dynamic logic has space to run. The dedicated database server is added because databases need special performance and storage handling.
+
+This structure is easier to manage, more stable, and can grow as needed because every part has its own place.
