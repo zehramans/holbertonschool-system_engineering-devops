@@ -13,11 +13,13 @@ Its job is to accept HTTP requests, route them to the right place, and return re
 Static files could be served directly from Nginx, but anything dynamic has to go to the application.
 
 Behind Nginx there is the application server, which actually runs the code for the website.
-This could be something like Gunicorn, uWSGI, PHP-FPM, Node’s built-in server, or any other process that executes the application logic. 
+This could be something like a type of WSGI(this works as an interface to make sure python web apps and
+frameworks can communicate with web servers like Apache and Nginx), PHP-FPM(same thing for php code),
+Node’s built-in server, or any other process that executes the application logic. 
 It loads the codebase that lives on the server — all the files that represent the website’s functionality.
 
 Whenever the application needs persistent information, it connects to the MySQL database on the same server. 
-The database stores all structured data: accounts, posts, transactions, anything that shouldn’t disappear if the server restarts.
+The database stores all structured data,like accounts, posts, transactions, anything that shouldn’t disappear if the server restarts.
 
 The application server finishes processing the request, sends the result back to Nginx, and Nginx returns an HTTP response to the user’s browser.
 The user sees the website.
