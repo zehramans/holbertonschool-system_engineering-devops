@@ -1,15 +1,74 @@
-A user types http://www.foobar.com into their browser. DNS resolves the www record and returns the public IP of the load balancer. The browser starts an HTTPS connection using the SSL certificate for that domain, so everything between the user and our public endpoint is encrypted.
+A user types http://www.foobar.com into their browser. DNS resolves the www record and returns the public IP of the load balancer.
+The browser starts an HTTPS connection using the SSL certificate for that domain, 
+so everything between the user and our public endpoint is encrypted.
 
-The first thing the request hits is HAProxy, which spreads traffic across the three backend servers. I’d configure HAProxy with a round-robin algorithm so each new request goes to the next server in line. This gives a simple form of Active-Active load balancing: all three servers receive traffic and work at the same time. (In contrast, Active-Passive would mean only one server works while the others sit idle until something fails.)
+The first thing the request hits is HAProxy, which spreads traffic across the three backend servers.
+I’d configure HAProxy with a round-robin algorithm so each new request goes to the next server in line. 
+This gives a simple form of Active-Active load balancing: all three servers receive traffic and work at the same time.
+(In contrast, Active-Passive would mean only one server works while the others sit idle until something fails.)
 
-Each of the three servers runs the same stack: Nginx, the application server, the code, and a MySQL instance. Each server also has its own host firewall. The firewalls are there to restrict access so only the right ports and IP ranges can reach each machine. They basically reduce the attack surface and stop random traffic from hitting internal services like MySQL.
+Each of the three servers runs the same stack: Nginx, the application server, the code, and a MySQL instance.
+Each server also has its own host firewall. The firewalls are there to restrict access so only the right ports and IP ranges can reach each machine.
+They basically reduce the attack surface and stop random traffic from hitting internal services like MySQL.
 
-We serve everything over HTTPS so the data can’t be read or tampered with on the way to the user. The SSL certificate is installed on the load balancer, so HAProxy handles the TLS handshake. This means traffic from the user to HAProxy is encrypted.
+We serve everything over HTTPS so the data can’t be read or tampered with on the way to the user. 
+The SSL certificate is installed on the load balancer, so HAProxy handles the TLS handshake. 
+This means traffic from the user to HAProxy is encrypted.
 
-Each server also runs a monitoring agent (like a Sumo Logic collector). The idea is simple: logs and metrics get collected locally, then shipped off to the monitoring service. That’s how we track errors, performance issues, CPU usage, etc. If we want to monitor QPS, we turn on an Nginx status endpoint or parse the access logs. The monitoring agent then sends these numbers over to the monitoring system so we can graph them and alert if they spike or drop.
+Each server also runs a monitoring agent (like a Sumo Logic collector). 
+The idea is simple: logs and metrics get collected locally, then shipped off to the monitoring service.
+That’s how we track errors, performance issues, CPU usage, etc. If we want to monitor QPS,
+we turn on an Nginx status endpoint or parse the access logs. 
+The monitoring agent then sends these numbers over to the monitoring system so we can graph them and alert if they spike or drop.
 
-Even though this setup is much better than having one server, it still has issues. Terminating SSL at the load balancer means the connection between HAProxy and the backend servers might not be encrypted unless we explicitly re-encrypt it. Another problem is that even though every server has MySQL, typically only one database instance is allowed to handle writes (the Primary). That means it’s still a write bottleneck and a write-side single point of failure. The replicas just follow it and can’t take over unless we promote one of them.
+Even though this setup is much better than having one server, 
+it still has issues. Terminating SSL at the load balancer means the 
+connection between HAProxy and the backend servers might not be encrypted unless we explicitly re-encrypt it. 
+Another problem is that even though every server has MySQL, 
+typically only one database instance is allowed to handle writes (the Primary).
+That means it’s still a write bottleneck and a write-side single point of failure. 
+The replicas just follow it and can’t take over unless we promote one of them.
 
-Finally, having all components on every server sounds convenient, but it can cause problems. Database workloads and web workloads can fight for resources. Updates become more complicated since changing the application might also affect the local database on each machine. And from a security standpoint, compromising one server gives an attacker access to everything: web, app, and database all at once.
+                    +-------------------------------+
+                    |         Load Balancers        |
+                    |        (HAProxy Cluster)      |
+                    +---------------+---------------+
+                                    |
+              +---------------------+---------------------+
+              |                                           |
+   +-------------------------+               +-------------------------+
+   |      Web Server 1       |               |      Web Server 2       |
+   |         (Nginx)         |               |         (Nginx)         |
+   +------------+------------+               +------------+------------+
+                |                                         |
+              + | ----------------------------------------| +
+              | |                                          | |
+              | |                                          | |
+              v v                                          v v
 
-In short, the design works, it’s secure, it’s encrypted, and it’s monitored — but it still has clear weak points that would need to be fixed before calling it truly production-ready.
+       +-------------------------+            +-------------------------+
+       |     App Server 1        |            |     App Server 2        |
+       |       (Gunicorn)        |            |       (Gunicorn)        |
+       +------------+------------+            +------------+------------+
+                        |                                 |
+                        +---------------+-----------------+
+                                        |
+                                        v
+                          +------------------------------+
+                          |     Primary Database Server  |
+                          |            (MySQL)           |
+                          +---------------+--------------+
+                                          |
+                                          v
+                          +------------------------------+
+                          |     Replica Database Server  |
+                          |            (MySQL)           |
+                          +------------------------------+
+
+Finally, having all components on every server sounds convenient,
+but it can cause problems. Database workloads and web workloads can fight for resources.
+Updates become more complicated since changing the application might also affect the local database on each machine. 
+And from a security standpoint, compromising one server gives an attacker access to everything: web, app, and database all at once.
+
+In short, the design works, it’s secure, it’s encrypted, 
+and it’s monitored — but it still has clear weak points that would need to be fixed before calling it truly production-ready.
