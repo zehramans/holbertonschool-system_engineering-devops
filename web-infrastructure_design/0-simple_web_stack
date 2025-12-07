@@ -24,6 +24,17 @@ The database stores all structured data,like accounts, posts, transactions, anyt
 The application server finishes processing the request, sends the result back to Nginx, and Nginx returns an HTTP response to the user’s browser.
 The user sees the website.
 
+                      +-------------------------------+
+                      |       Extra Server            |
+                      |  (Utility / Future Expansion) |
+                      +---------------+---------------+
+                                      |
+                                      v
+         +---------------------------------------------------------+
+         |                 Existing Infrastructure                 |
+         +---------------------------------------------------------+
+
+
 Even though this setup works and is actually how many small websites run, it has obvious problems. 
 Everything is on one machine, which makes it a classic single point of failure.
 If the server dies, crashes, or loses its network connection, the website is instantly down. 
